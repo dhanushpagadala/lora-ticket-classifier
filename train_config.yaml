@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------------------
+# Central config for the LoRA / QLoRA fine-tuning run.
+# Edit this file rather than passing a pile of CLI flags.
+# ---------------------------------------------------------------------------
+
+model_name: "meta-llama/Llama-3.2-1B-Instruct"
+# Alternatives:
+# model_name: "microsoft/Phi-3-mini-4k-instruct"
+# model_name: "mistralai/Mistral-7B-Instruct-v0.3"
+
+use_qlora: true          # 4-bit quantized base model + LoRA adapters (recommended on <=16GB GPUs)
+                          # set to false to do plain LoRA in fp16/bf16 (needs more VRAM)
+
+# --- LoRA hyperparameters ---
+lora:
+  r: 16                  # rank of the adapter matrices — higher = more capacity, more params
+  alpha: 32               # scaling factor, common convention: alpha = 2*r
+  dropout: 0.05
+  target_modules:         # which weight matrices get adapters (attention + MLP projections)
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+# --- Training hyperparameters ---
+training:
+  output_dir: "outputs/adapter"
+  num_train_epochs: 3
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+  gradient_accumulation_steps: 4    # effective batch size = 4*4 = 16
+  learning_rate: 2.0e-4
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  weight_decay: 0.01
+  logging_steps: 10
+  eval_strategy: "epoch"
+  save_strategy: "epoch"
+  save_total_limit: 2
+  bf16: true              # set false + fp16: true if your GPU doesn't support bf16 (e.g. older T4)
+  fp16: false
+  max_seq_length: 512
+  packing: false
+  seed: 42
+
+# --- Data paths ---
+data:
+  train_path: "data/formatted/train.jsonl"
+  val_path: "data/formatted/val.jsonl"
+  test_path: "data/formatted/test.jsonl"
+
+labels:
+  - billing
+  - technical
+  - account
+  - feature_request
+  - general
